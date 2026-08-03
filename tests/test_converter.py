@@ -82,3 +82,18 @@ def test_to_roman_rejects_zero():
 def test_to_roman_rejects_too_big():
     with pytest.raises(RomanError):
         to_roman(4000)
+
+
+def test_from_roman_rejects_non_string():
+    with pytest.raises(RomanError):
+        from_roman(1994)
+
+
+def test_from_roman_rejects_empty():
+    with pytest.raises(RomanError):
+        from_roman("")
+
+
+def test_from_roman_rejects_bad_char():
+    with pytest.raises(RomanError):
+        from_roman("IIZ")
