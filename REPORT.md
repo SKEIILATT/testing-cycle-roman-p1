@@ -169,19 +169,37 @@ different existing tests (`test_to_roman_rejects_float`/`test_to_roman_rejects_n
 | `n` (parameter) | N1a (function entry) | N3 (`n < _MIN_VALUE`) | p-use |
 | `n` (parameter) | N1a (function entry) | N5 (`n > _MAX_VALUE`) | p-use |
 | `n` (parameter) | N1a (function entry) | N7 (`remaining = n`) | c-use |
-| `remaining` | N7 (`remaining = n`) | N9 (`remaining >= value`) | p-use |
-| `remaining` | N7, then redefined at N10 each iteration | N10 (`remaining -= value`) | c-use (and redefinition) |
-| `value` (loop pair, unpacked at N8 from `_PAIRS`) | N8 (for-loop unpack, redefined every outer iteration) | N9 (`remaining >= value`) | p-use |
-| `value` (loop pair) | N8 | N10 (`remaining -= value`) | c-use |
-| `symbol` (loop pair, unpacked at N8 from `_PAIRS`) | N8 (for-loop unpack) | N10 (`out.append(symbol)`) | c-use |
+| `remaining` | N7 (`remaining = n`), initial definition | N9 (`remaining >= value`) | p-use |
+| `remaining` | N7, initial definition | N10 (`remaining -= value`), first pass through the body | c-use |
+| `remaining` | N10 (`remaining -= value`), redefined on every pass through the loop body | N9 (`remaining >= value`), the next time the condition is evaluated | p-use |
+| `remaining` | N10, redefined on every pass through the loop body | N10 (`remaining -= value`), the next pass through the body | c-use |
+| `value` | N8 (for-loop unpack, redefined every outer iteration) | N9 (`remaining >= value`) | p-use |
+| `value` | N8 | N10 (`remaining -= value`) | c-use |
+| `symbol` | N8 (for-loop unpack) | N10 (`out.append(symbol)`) | c-use |
 | `out` | N7 (`out = []`) | N10 (`out.append(symbol)`) | c-use |
 | `out` | N7 | N11 (`"".join(out)`) | c-use |
 
-Note on the `(value, symbol)` pairs created inside the loop: each iteration of N8 rebinds both names
-from the next tuple in `_PAIRS` (e.g. `(4, "IV")`), so both are **defined once per outer iteration at
-N8** and **used within that same iteration** at N9 (`value`, p-use) and N10 (`value` and `symbol`,
-c-use) — there is no use of a stale binding from a previous iteration, since the inner `while` at N9
-consumes `value` before N8 advances to the next pair.
+**The pairs created by `remaining` being redefined inside the loop.** `remaining` has two definition
+sites — N7 (the initial `remaining = n`) and N10 (`remaining -= value`, executed once per pass through
+the `while` body) — and two use sites reachable from each: N9 (p-use, the loop condition) and N10
+(c-use, the decrement itself). That gives four distinct definition-use pairs, not two:
+
+1. **(def N7, use N9)** — the value assigned before the loop reaches the first evaluation of
+   `remaining >= value` for the first pair in `_PAIRS`.
+2. **(def N7, use N10)** — the value assigned before the loop reaches the first execution of the body,
+   if that first evaluation is true.
+3. **(def N10, use N9)** — every redefinition inside the loop reaches the *next* evaluation of the
+   condition — either another pass of the same `while` (same pair), or, once the `while` goes false,
+   the following pair's first `while` check after N8 advances (`remaining` is never reset between
+   pairs, so the same running value is tested against the next pair's `value` too).
+4. **(def N10, use N10)** — a self-loop pair: whenever the same `while` body executes more than once in
+   a row (e.g. `remaining` still `>= value` after a decrement), the redefinition from the *previous*
+   pass reaches the decrement of the *next* pass.
+
+Pair 4 only exists because of the redefinition inside the loop; a variable defined once and used
+without ever being reassigned in the same loop (as `value` and `symbol` are, since both are rebound
+fresh from `_PAIRS` every outer iteration and never reassigned inside the `while`) produces no
+equivalent self-loop pair.
 
 ## 2. Integration finding
 
