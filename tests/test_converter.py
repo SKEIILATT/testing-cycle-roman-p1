@@ -97,3 +97,27 @@ def test_from_roman_rejects_empty():
 def test_from_roman_rejects_bad_char():
     with pytest.raises(RomanError):
         from_roman("IIZ")
+
+
+def test_from_roman_four():
+    assert from_roman("IV") == 4
+
+
+def test_from_roman_nine():
+    assert from_roman("IX") == 9
+
+
+def test_from_roman_forty():
+    assert from_roman("XL") == 40
+
+
+def test_from_roman_ninety():
+    assert from_roman("XC") == 90
+
+
+def test_from_roman_four_hundred():
+    assert from_roman("CD") == 400
+
+
+def test_from_roman_nine_hundred():
+    assert from_roman("CM") == 900
