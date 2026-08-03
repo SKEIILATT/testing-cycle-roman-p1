@@ -1,5 +1,7 @@
 # test suite
-from roman.converter import to_roman, from_roman
+import pytest
+
+from roman.converter import RomanError, to_roman, from_roman
 
 
 def test_one():
@@ -60,3 +62,23 @@ def test_roundtrip_medium():
 
 def test_lowercase_input():
     assert from_roman("xi") == 11
+
+
+def test_to_roman_rejects_float():
+    with pytest.raises(RomanError):
+        to_roman(3.5)
+
+
+def test_to_roman_rejects_bool():
+    with pytest.raises(RomanError):
+        to_roman(True)
+
+
+def test_to_roman_rejects_zero():
+    with pytest.raises(RomanError):
+        to_roman(0)
+
+
+def test_to_roman_rejects_too_big():
+    with pytest.raises(RomanError):
+        to_roman(4000)
