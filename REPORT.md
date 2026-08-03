@@ -193,3 +193,53 @@ result, those two tests (`test_add_roman_result_accepted_by_is_valid_roman`,
 `test_subtract_roman_result_accepted_by_is_valid_roman`) pass today — they document and lock in the
 composition contract (result must round-trip through `is_valid_roman`) rather than re-discover the
 already-fixed defect.
+
+## 3. Acceptance criteria
+
+Three criteria in Given/When/Then form, each traced to a specific rule in SPECIFICATION.md, implemented
+in `tests/test_acceptance.py`. They were written and run **after** the unit suite was green and branch
+coverage of `src/roman/converter.py` already stood at 100% (see section 4).
+
+**Criterion 1 — whitespace trimming (spec section 3):**
+> Given a roman numeral string surrounded by leading and trailing blank spaces,
+> When `from_roman` is called with that string,
+> Then it returns the numeral's value, because "leading and trailing whitespace is tolerated".
+
+Test: `test_from_roman_trims_surrounding_whitespace` — `from_roman("  IV  ") == 4`.
+
+**Criterion 2 — canonical form validation (spec section 4):**
+> Given `"IIII"`, which represents the value 4 but is not written in canonical form,
+> When `is_valid_roman` is called with that string,
+> Then it returns `False`, because "the canonical form of 4 is IV".
+
+Test: `test_is_valid_roman_rejects_non_canonical_form` — `is_valid_roman("IIII") is False`.
+
+**Criterion 3 — total input safety (spec section 6):**
+> Given an input that is not a string, for example `None`,
+> When `is_valid_roman` is called with that input,
+> Then it returns `False` without raising any exception, because "it never raises, for any type of
+> input".
+
+Test: `test_is_valid_roman_never_raises_on_non_string` — `is_valid_roman(None) is False`.
+
+### Results against the code that already reported 100% branch coverage
+
+| Criterion | Result | Defect |
+|---|---|---|
+| 1 — whitespace trimming | **FAILED** | `from_roman` did `text = s.upper()` with no `.strip()`; any leading/trailing space was treated as an invalid character and raised `RomanError` instead of being ignored. |
+| 2 — canonical form | **FAILED** | `from_roman`/`is_valid_roman` accepted any string that summed to a value in range, with no check that the string was the canonical spelling of that value; `is_valid_roman("IIII")` returned `True`. |
+| 3 — non-string safety | PASSED | `is_valid_roman` already wrapped `from_roman` in `try/except RomanError`, and `from_roman` already raised `RomanError` (not some other exception) for non-`str` input. |
+
+### Why coverage could not reveal this
+
+Both failing criteria are **missing-behaviour defects**, not unreached-branch defects. Coverage — even
+at 100% branch coverage, which this codebase already had before these tests were written — can only
+tell you that every line and every branch *that exists in the code* was executed by some test. It
+cannot tell you that a line the specification requires was never written at all. `from_roman` never
+contained a `.strip()` call, so there was no branch to miss: the "trim whitespace" behaviour simply
+did not exist anywhere in the control-flow graph for coverage to report on. Likewise there was no
+canonical-form check to execute or skip — the five rules of spec section 4 were never encoded, so no
+test, however thorough at the unit level, could drive coverage of logic that is absent. Acceptance
+tests catch this class of defect precisely because they are derived from the specification
+independently of the implementation, rather than from reading the code and exercising its existing
+paths.
