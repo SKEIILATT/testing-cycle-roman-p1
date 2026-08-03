@@ -154,3 +154,42 @@ whichever feasible path is closest to it in decision content.
 | `symbol` | N8 (for-loop unpack) | N10 (`out.append(symbol)`) | c-use |
 | `out` | N7 (`out = []`) | N10 (`out.append(symbol)`) | c-use |
 | `out` | N7 | N11 (`"".join(out)`) | c-use |
+
+## 2. Integration finding
+
+`add_roman` and `subtract_roman` (`src/roman/converter.py:109-114`) are pure integration points per
+spec section 7: each is one line that composes `from_roman`, an arithmetic operator, and `to_roman`.
+Neither function has logic of its own — its correctness depends entirely on the two units it wires
+together being correct **for the specific values that composition produces**.
+
+**Defect found:** `to_roman(4)` returned `"IIII"` instead of `"IV"`. The cause was a data error in the
+`_PAIRS` table (`src/roman/converter.py:16-17`): it contained the value `5` twice —
+`(5, "V")` followed by `(5, "IV")` — instead of `(5, "V")` followed by `(4, "IV")`. Since the greedy
+loop in `to_roman` only appends `"IV"` when `remaining >= 4`, and the table never listed the value 4,
+that branch could never be taken; `to_roman(4)` fell through to the `(1, "I")` pair and repeated it
+four times.
+
+This surfaced through `add_roman("II", "II")`: `from_roman("II")` correctly returns `2` for each
+operand (unit-correct), `2 + 2 = 4` (correct arithmetic), but `to_roman(4)` — called only as a
+consequence of *this specific composition* — returned `"IIII"`. The mandatory example in
+SPECIFICATION.md section 7, `add_roman("II", "II") == "IV"`, failed.
+
+**Why the unit tests of `to_roman` and `from_roman` alone did not detect it:** branch coverage
+measures which *lines/branches* executed, not which *input values* passed through them. The 15
+inherited unit tests and the ones added for `to_roman` in Part 3 exercised `n` = 1, 2, 3, 5, 10, 50,
+100, 500, 1000, 3999, plus the invalid cases (non-int, bool, 0, 4000) — every one of those already
+reached 100% branch coverage of `to_roman` without ever calling `to_roman(4)`. The while-loop body at
+N10 (see section 1) is the same line regardless of which pair from `_PAIRS` is being matched, so a
+coverage tool reports it "covered" the moment *any* pair triggers it — it cannot tell you that the
+specific `(4, "IV")` row was never reachable. The bug was a **data defect** (a wrong tuple in a lookup
+table), not a missing branch, so no amount of statement or branch coverage of `to_roman` in isolation
+could have found it. It only became visible once a *composition* (`add_roman`) produced the exact
+input value that the missing table row was responsible for.
+
+The fix — correcting `(5, "IV")` to `(4, "IV")` in `_PAIRS` — was committed as
+`fix: correct value for IV in _PAIRS and add tests for add_roman and subtract_roman functions`
+(`78f4276`), before the formal integration tests in `tests/test_integration.py` were written. As a
+result, those two tests (`test_add_roman_result_accepted_by_is_valid_roman`,
+`test_subtract_roman_result_accepted_by_is_valid_roman`) pass today — they document and lock in the
+composition contract (result must round-trip through `is_valid_roman`) rather than re-discover the
+already-fixed defect.
