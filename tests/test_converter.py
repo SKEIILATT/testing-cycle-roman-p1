@@ -1,7 +1,7 @@
 # test suite
 import pytest
 
-from roman.converter import RomanError, to_roman, from_roman, is_valid_roman
+from roman.converter import RomanError, to_roman, from_roman, is_valid_roman, add_roman, subtract_roman
 
 
 def test_one():
@@ -139,3 +139,21 @@ def test_is_valid_roman_true():
 
 def test_is_valid_roman_false():
     assert is_valid_roman("XZ") is False
+
+
+def test_add_roman_basic():
+    assert add_roman("II", "II") == "IV"
+
+
+def test_add_roman_rejects_out_of_range():
+    with pytest.raises(RomanError):
+        add_roman("MMM", "M")
+
+
+def test_subtract_roman_basic():
+    assert subtract_roman("X", "I") == "IX"
+
+
+def test_subtract_roman_rejects_out_of_range():
+    with pytest.raises(RomanError):
+        subtract_roman("I", "I")
