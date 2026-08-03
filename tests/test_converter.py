@@ -1,7 +1,16 @@
 # test suite
 import pytest
 
-from roman.converter import RomanError, to_roman, from_roman, is_valid_roman, add_roman, subtract_roman
+from roman.converter import (
+    RomanError,
+    to_roman,
+    from_roman,
+    is_valid_roman,
+    add_roman,
+    subtract_roman,
+    _roundtrip_differs,
+    _count_char,
+)
 
 
 def test_one():
@@ -157,3 +166,19 @@ def test_subtract_roman_basic():
 def test_subtract_roman_rejects_out_of_range():
     with pytest.raises(RomanError):
         subtract_roman("I", "I")
+
+
+def test_roundtrip_differs_same():
+    assert _roundtrip_differs(58, "LVIII") is False
+
+
+def test_roundtrip_differs_not_same():
+    assert _roundtrip_differs(58, "LIIX") is True
+
+
+def test_count_char_found():
+    assert _count_char("MMMCMXCIX", "M") == 4
+
+
+def test_count_char_not_found():
+    assert _count_char("MMMCMXCIX", "L") == 0
