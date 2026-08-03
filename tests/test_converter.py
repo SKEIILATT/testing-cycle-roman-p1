@@ -121,3 +121,13 @@ def test_from_roman_four_hundred():
 
 def test_from_roman_nine_hundred():
     assert from_roman("CM") == 900
+
+
+def test_from_roman_rejects_bad_pair():
+    with pytest.raises(RomanError):
+        from_roman("IL")
+
+
+def test_from_roman_rejects_out_of_range():
+    with pytest.raises(RomanError):
+        from_roman("MMMM")
