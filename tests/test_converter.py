@@ -1,7 +1,7 @@
 # test suite
 import pytest
 
-from roman.converter import RomanError, to_roman, from_roman
+from roman.converter import RomanError, to_roman, from_roman, is_valid_roman
 
 
 def test_one():
@@ -131,3 +131,11 @@ def test_from_roman_rejects_bad_pair():
 def test_from_roman_rejects_out_of_range():
     with pytest.raises(RomanError):
         from_roman("MMMM")
+
+
+def test_is_valid_roman_true():
+    assert is_valid_roman("XIV") is True
+
+
+def test_is_valid_roman_false():
+    assert is_valid_roman("XZ") is False
